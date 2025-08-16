@@ -1,0 +1,83 @@
+# Represents a single adverse event
+class AdverseEvent
+  attr_accessor :event_id, :product_id, :patient_id, :event_term, :severity, :report_date
+
+  @@next_id = 1
+
+  def initialize(product_id, patient_id, event_term, severity)
+    @event_id = @@next_id
+    @@next_id += 1
+    @product_id = product_id
+    @patient_id = patient_id
+    @event_term = event_term
+    @severity = severity
+    @report_date = Time.now
+  end
+
+  def to_s
+    "Event ID: #{event_id}, Product: #{product_id}, Term: #{event_term}, Severity: #{severity}"
+  end
+end
+
+# Manages all post-market surveillance data
+class PMSManager
+  def initialize
+    @events = {}
+  end
+
+  def add_event(product_id, patient_id, event_term, severity)
+    event = AdverseEvent.new(product_id, patient_id, event_term, severity)
+    @events[event.event_id] = event
+    puts "Event ##{event.event_id} added for product #{product_id}."
+  end
+
+  def find_event(id)
+    @events[id]
+  end
+
+  def get_events_for_product(product_id)
+    @events.values.select { |event| event.product_id == product_id }
+  end
+
+  def generate_summary_report
+    puts "\n--- Post-Market Surveillance Summary ---"
+    
+    # Analyze by product
+    product_counts = Hash.new(0)
+    @events.each_value do |event|
+      product_counts[event.product_id] += 1
+    end
+    
+    puts "Total Events per Product:"
+    product_counts.each do |product, count|
+      puts "  #{product}: #{count} events"
+    end
+    
+    # Analyze by severity
+    severity_counts = Hash.new(0)
+    @events.each_value do |event|
+      severity_counts[event.severity] += 1
+    end
+    
+    puts "\nEvents by Severity:"
+    severity_counts.each do |severity, count|
+      puts "  #{severity}: #{count} events"
+    end
+  end
+end
+
+# Main script logic
+manager = PMSManager.new
+
+manager.add_event("Product-X", "P101", "Headache", "Mild")
+manager.add_event("Product-Y", "P102", "Rash", "Moderate")
+manager.add_event("Product-X", "P103", "Dizziness", "Moderate")
+manager.add_event("Product-Z", "P104", "Heart Palpitations", "Severe")
+manager.add_event("Product-X", "P105", "Headache", "Mild")
+
+puts "\nEvents for Product-X:"
+manager.get_events_for_product("Product-X").each do |event|
+  puts " - " + event.to_s
+end
+
+manager.generate_summary_report
