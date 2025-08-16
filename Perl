@@ -1,0 +1,80 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use Data::Dumper;
+
+# The file to be used as our data store
+my $data_file = 'adverse_events.log';
+
+# Data structure to hold parsed data
+my %pms_data;
+
+# Function to process the log file and populate the data hash
+sub process_log {
+    my $log_file = shift;
+    open my $fh, '<', $log_file or die "Cannot open '$log_file': $!";
+
+    while (my $line = <$fh>) {
+        chomp $line;
+        next if $line =~ /^#/; # Skip comments
+        next unless $line;    # Skip empty lines
+
+        # Expected log format: EventID|ProductID|PatientID|EventTerm|Severity|ReportDate
+        my ($event_id, $product_id, $patient_id, $event_term, $severity, $report_date) = split /\|/, $line;
+        next unless $event_id && $product_id && $event_term && $severity;
+
+        $pms_data{$event_id} = {
+            product_id => $product_id,
+            patient_id => $patient_id,
+            event_term => $event_term,
+            severity => $severity,
+            report_date => $report_date
+        };
+    }
+    close $fh;
+}
+
+# Function to generate a report on a specific product
+sub generate_product_report {
+    my $product_id = shift;
+
+    my @events = grep { $pms_data{$_}->{product_id} eq $product_id } keys %pms_data;
+    
+    print "--- Adverse Event Report for Product $product_id ---\n";
+    print "Total events: " . scalar(@events) . "\n\n";
+
+    if (@events) {
+        my %severity_counts;
+        my %term_counts;
+
+        foreach my $event_id (@events) {
+            my $event = $pms_data{$event_id};
+            $severity_counts{$event->{severity}}++;
+            $term_counts{$event->{event_term}}++;
+        }
+
+        print "Events by Severity:\n";
+        foreach my $severity (sort keys %severity_counts) {
+            print "  $severity: $severity_counts{$severity} events\n";
+        }
+
+        print "\nEvents by Term:\n";
+        foreach my $term (sort keys %term_counts) {
+            print "  $term: $term_counts{$term} events\n";
+        }
+    }
+}
+
+# Main script logic
+process_log($data_file);
+generate_product_report("Product-A");
+generate_product_report("Product-B");
+
+__END__
+# Data for adverse_events.log
+# EventID|ProductID|PatientID|EventTerm|Severity|ReportDate
+1|Product-A|P001|Dizziness|Moderate|2025-08-16T14:00:00
+2|Product-B|P002|Rash|Mild|2025-08-16T14:01:00
+3|Product-A|P003|Nausea|Mild|2025-08-16T14:02:00
+4|Product-C|P004|Allergic Reaction|Severe|2025-08-16T14:03:00
+5|Product-A|P005|Dizziness|Moderate|2025-08-16T14:04:00
