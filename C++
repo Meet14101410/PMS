@@ -1,0 +1,103 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <memory>
+#include <chrono>
+
+// Represents an adverse event report
+struct AdverseEvent {
+    int event_id;
+    std::string product_id;
+    std::string patient_id;
+    std::string event_term;
+    std::string severity;
+    std::string report_date;
+};
+
+// A class to manage the PMS data
+class PMSManager {
+private:
+    std::unordered_map<int, std::shared_ptr<AdverseEvent>> event_store;
+    int next_event_id = 1;
+
+public:
+    // Adds a new adverse event report
+    void add_adverse_event(const std::string& product_id, const std::string& patient_id, 
+                           const std::string& event_term, const std::string& severity) {
+        auto new_event = std::make_shared<AdverseEvent>();
+        new_event->event_id = next_event_id++;
+        new_event->product_id = product_id;
+        new_event->patient_id = patient_id;
+        new_event->event_term = event_term;
+        new_event->severity = severity;
+        
+        // Simple timestamp
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+        new_event->report_date = std::ctime(&now_c);
+        new_event->report_date.pop_back(); // Remove newline
+
+        event_store[new_event->event_id] = new_event;
+        std::cout << "Adverse event added for product " << product_id << std::endl;
+    }
+
+    // Finds an event by its ID
+    std::shared_ptr<AdverseEvent> find_event_by_id(int id) {
+        auto it = event_store.find(id);
+        if (it != event_store.end()) {
+            return it->second;
+        }
+        return nullptr;
+    }
+
+    // Counts events for a specific product
+    int count_events_for_product(const std::string& product_id) {
+        int count = 0;
+        for (const auto& pair : event_store) {
+            if (pair.second->product_id == product_id) {
+                count++;
+            }
+        }
+        return count;
+    }
+    
+    // Simple report generation
+    void generate_summary_report() {
+        std::unordered_map<std::string, int> product_counts;
+        std::unordered_map<std::string, int> severity_counts;
+
+        for (const auto& pair : event_store) {
+            const auto& event = pair.second;
+            product_counts[event->product_id]++;
+            severity_counts[event->severity]++;
+        }
+
+        std::cout << "\n--- PMS Summary Report ---\n";
+        std::cout << "Events per product:\n";
+        for (const auto& pair : product_counts) {
+            std::cout << "  " << pair.first << ": " << pair.second << " events\n";
+        }
+
+        std::cout << "\nEvents by severity:\n";
+        for (const auto& pair : severity_counts) {
+            std::cout << "  " << pair.first << ": " << pair.second << " events\n";
+        }
+    }
+};
+
+int main() {
+    PMSManager manager;
+
+    manager.add_adverse_event("Product-A", "P001", "Dizziness", "Moderate");
+    manager.add_adverse_event("Product-B", "P002", "Rash", "Mild");
+    manager.add_adverse_event("Product-A", "P003", "Nausea", "Mild");
+    manager.add_adverse_event("Product-C", "P004", "Allergic Reaction", "Severe");
+    manager.add_adverse_event("Product-A", "P005", "Dizziness", "Moderate");
+    
+    std::cout << "\nTotal events for Product-A: " << manager.count_events_for_product("Product-A") << std::endl;
+    
+    manager.generate_summary_report();
+
+    return 0;
+}
